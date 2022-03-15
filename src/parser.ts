@@ -23,7 +23,7 @@ export interface ComponentDoc {
   tags?: StringIndexedObject<string>;
 }
 
-export interface Props extends StringIndexedObject<PropItem> {}
+export interface Props extends StringIndexedObject<PropItem> { }
 
 export interface PropItem {
   name: string;
@@ -502,9 +502,9 @@ export class Parser {
         params,
         returns: returnDescription
           ? {
-              description: returnDescription,
-              type: returnType
-            }
+            description: returnDescription,
+            type: returnType
+          }
           : null
       });
     });
@@ -721,8 +721,8 @@ export class Parser {
 
       const type = jsDocComment.tags.type
         ? {
-            name: jsDocComment.tags.type
-          }
+          name: jsDocComment.tags.type
+        }
         : this.getDocgenType(propType, required);
 
       const propTags = this.shouldIncludePropTagMap
@@ -1202,7 +1202,7 @@ function getTextValueOfFunctionProperty(
         expr.left &&
         (expr.left as ts.PropertyAccessExpression).name &&
         (expr.left as ts.PropertyAccessExpression).name.escapedText ===
-          propertyName
+        propertyName
       );
     })
     .filter(statement => {
@@ -1350,6 +1350,53 @@ function isInterfaceOrTypeAliasDeclaration(
   );
 }
 
+interface DocEntry {
+  name?: string;
+  fileName?: string;
+  documentation?: string;
+  type?: string;
+  constructors?: DocEntry[];
+  parameters?: DocEntry[];
+  returnType?: string;
+}
+
+function isDefined<T>(x: T | undefined): x is T {
+  return typeof x !== "undefined";
+}
+
+const moduleExports = (checker: ts.TypeChecker) => (moduleSymbols: ts.Symbol[]): string[] => {
+  const exportedNames: string[] = [];
+
+  moduleSymbols.forEach((symbol) => {
+
+    symbol.members?.forEach((value, key) => {
+
+    });
+
+    exportedNames.push();
+  });
+
+  return exportedNames;
+}
+
+const serializeSymbol = (checker: ts.TypeChecker) => (symbol: ts.Symbol): DocEntry {
+  return {
+    name: symbol.getName(),
+    documentation: ts.displayPartsToString(symbol.getDocumentationComment(checker)),
+    type: checker.typeToString(
+      checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!)
+    )
+  };
+}
+
+const serializeSignature = (checker: ts.TypeChecker) => (signature: ts.Signature) => {
+  return {
+    parameters: signature.parameters.map(serializeSymbol(checker)),
+    returnType: checker.typeToString(signature.getReturnType()),
+    documentation: ts.displayPartsToString(signature.getDocumentationComment(checker))
+  };
+}
+
 function parseWithProgramProvider(
   filePathOrPaths: string | string[],
   compilerOptions: ts.CompilerOptions,
@@ -1360,6 +1407,7 @@ function parseWithProgramProvider(
     ? filePathOrPaths
     : [filePathOrPaths];
 
+
   const program = programProvider
     ? programProvider()
     : ts.createProgram(filePaths, compilerOptions);
@@ -1368,13 +1416,37 @@ function parseWithProgramProvider(
 
   const checker = program.getTypeChecker();
 
-  return filePaths
-    .map(filePath => program.getSourceFile(filePath))
+  const sourceFiles = filePaths
+    .map(filePath => program.getSourceFile(filePath));
+
+  // Loop through the root AST nodes of the file
+  if (isDefined(sourceFiles[0])) {
+    ts.forEachChild(sourceFiles[0], node => {
+      let name = "";
+
+      // for (const sig of checker.getTypeAtLocation(node).getCallSignatures()) {
+      //   console.log('** Returning: ', sig.getReturnType().symbol?.getEscapedName().toString());
+      // }
+
+      // test if function and then we'll test for parameters that aren't 'props'
+      if (ts.isFunctionDeclaration(node) && isDefined(node)) {
+        name = node.name?.text || '';
+        console.log('NAME:::::', name);
+      }
+
+      const container = [];//identifiers.includes(name) ? foundNodes : unfoundNodes;
+      container.push([name, node]);
+    });
+  }
+
+
+  return sourceFiles
     .filter(
       (sourceFile): sourceFile is ts.SourceFile =>
         typeof sourceFile !== 'undefined'
     )
     .reduce<ComponentDoc[]>((docs, sourceFile) => {
+      // Could do the ts.forEachChild here instead and treat them as nodes instead of symbols at this stage
       const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
 
       if (!moduleSymbol) {
@@ -1384,6 +1456,8 @@ function parseWithProgramProvider(
       const components = checker.getExportsOfModule(moduleSymbol);
       const componentDocs: ComponentDoc[] = [];
 
+      // console.log();
+
       // First document all components
       components.forEach(exp => {
         const doc = parser.getComponentInfo(
@@ -1392,6 +1466,8 @@ function parseWithProgramProvider(
           parserOpts.componentNameResolver,
           parserOpts.customComponentTypes
         );
+
+        // console.log(parser.getCallSignature(exp).getParameters(), '******');
 
         if (doc) {
           componentDocs.push(doc);

@@ -1,4 +1,4 @@
-import { assert } from 'chai';
+import { assert, expect } from 'chai';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
@@ -9,7 +9,41 @@ import {
   withCustomConfig,
   withDefaultConfig
 } from '../parser';
-import { check, checkComponent, fixturePath } from './testUtils';
+import { check, checkComponent, fixturePath, tsFixturePath } from './testUtils';
+
+// import Calculator from './data/BasicTS/CalculatorClass';
+
+describe.only('parser that does functions and classes', () => {
+  // it('should parse a basic TS class', () => {
+  //   const result = parse('./data/BasicTS/Calculator');
+  //   console.log(JSON.stringify(result));
+  //   expect(result).toEqual({
+
+  //   });
+  // });
+
+  it('should parse a basic TS functions', () => {
+    const result = parse(tsFixturePath('FunctionExample'));
+    console.log(JSON.stringify(result));
+    expect(result).equal([
+      {
+        displayName: 'add',
+        description: 'Get the sum of 2 numbers.',
+        filePath: tsFixturePath('FunctionExample'),
+        props: {},
+        tags: {},
+        params: [{
+          name: 'a',
+          type: 'number'
+        }, {
+          name: 'b',
+          type: 'number'
+        }],
+        methods: [],
+      }
+    ]);
+  });
+});
 
 describe('parser', () => {
   it('should parse simple react class component', () => {

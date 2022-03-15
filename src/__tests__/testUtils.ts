@@ -32,6 +32,19 @@ export interface ExpectedProp {
   };
 }
 
+export function tsFixturePath(componentName: string) {
+  return path.join(
+    __dirname,
+    '..',
+    '..',
+    'src',
+    '__tests__',
+    'data',
+    'BasicTS',
+    `${componentName}.ts`
+  ); // it's running in ./temp
+}
+
 export function fixturePath(componentName: string) {
   return path.join(
     __dirname,
@@ -104,8 +117,7 @@ export function checkComponent(
     ) {
       // tslint:disable-next-line:max-line-length
       errors.push(
-        `Properties for ${compName} are different - expected: ${
-          expectedPropNames.length
+        `Properties for ${compName} are different - expected: ${expectedPropNames.length
         }, actual: ${propNames.length} (${JSON.stringify(
           expectedPropNames
         )}, ${JSON.stringify(propNames)})`
