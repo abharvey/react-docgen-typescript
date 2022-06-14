@@ -13,7 +13,7 @@ import { check, checkComponent, fixturePath, tsFixturePath } from './testUtils';
 
 // import Calculator from './data/BasicTS/CalculatorClass';
 
-describe.only('parser that does functions and classes', () => {
+describe.skip('parser that does functions and classes', () => {
   // it('should parse a basic TS class', () => {
   //   const result = parse('./data/BasicTS/Calculator');
   //   console.log(JSON.stringify(result));
@@ -32,14 +32,17 @@ describe.only('parser that does functions and classes', () => {
         filePath: tsFixturePath('FunctionExample'),
         props: {},
         tags: {},
-        params: [{
-          name: 'a',
-          type: 'number'
-        }, {
-          name: 'b',
-          type: 'number'
-        }],
-        methods: [],
+        params: [
+          {
+            name: 'a',
+            type: 'number'
+          },
+          {
+            name: 'b',
+            type: 'number'
+          }
+        ],
+        methods: []
       }
     ]);
   });
