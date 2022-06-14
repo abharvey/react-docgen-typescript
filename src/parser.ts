@@ -23,7 +23,7 @@ export interface ComponentDoc {
   tags?: StringIndexedObject<string>;
 }
 
-export interface Props extends StringIndexedObject<PropItem> { }
+export interface Props extends StringIndexedObject<PropItem> {}
 
 export interface PropItem {
   name: string;
@@ -502,9 +502,9 @@ export class Parser {
         params,
         returns: returnDescription
           ? {
-            description: returnDescription,
-            type: returnType
-          }
+              description: returnDescription,
+              type: returnType
+            }
           : null
       });
     });
@@ -721,8 +721,8 @@ export class Parser {
 
       const type = jsDocComment.tags.type
         ? {
-          name: jsDocComment.tags.type
-        }
+            name: jsDocComment.tags.type
+          }
         : this.getDocgenType(propType, required);
 
       const propTags = this.shouldIncludePropTagMap
@@ -1202,7 +1202,7 @@ function getTextValueOfFunctionProperty(
         expr.left &&
         (expr.left as ts.PropertyAccessExpression).name &&
         (expr.left as ts.PropertyAccessExpression).name.escapedText ===
-        propertyName
+          propertyName
       );
     })
     .filter(statement => {
@@ -1361,40 +1361,7 @@ interface DocEntry {
 }
 
 function isDefined<T>(x: T | undefined): x is T {
-  return typeof x !== "undefined";
-}
-
-const moduleExports = (checker: ts.TypeChecker) => (moduleSymbols: ts.Symbol[]): string[] => {
-  const exportedNames: string[] = [];
-
-  moduleSymbols.forEach((symbol) => {
-
-    symbol.members?.forEach((value, key) => {
-
-    });
-
-    exportedNames.push();
-  });
-
-  return exportedNames;
-}
-
-const serializeSymbol = (checker: ts.TypeChecker) => (symbol: ts.Symbol): DocEntry {
-  return {
-    name: symbol.getName(),
-    documentation: ts.displayPartsToString(symbol.getDocumentationComment(checker)),
-    type: checker.typeToString(
-      checker.getTypeOfSymbolAtLocation(symbol, symbol.valueDeclaration!)
-    )
-  };
-}
-
-const serializeSignature = (checker: ts.TypeChecker) => (signature: ts.Signature) => {
-  return {
-    parameters: signature.parameters.map(serializeSymbol(checker)),
-    returnType: checker.typeToString(signature.getReturnType()),
-    documentation: ts.displayPartsToString(signature.getDocumentationComment(checker))
-  };
+  return typeof x !== 'undefined';
 }
 
 function parseWithProgramProvider(
@@ -1407,7 +1374,6 @@ function parseWithProgramProvider(
     ? filePathOrPaths
     : [filePathOrPaths];
 
-
   const program = programProvider
     ? programProvider()
     : ts.createProgram(filePaths, compilerOptions);
@@ -1416,13 +1382,14 @@ function parseWithProgramProvider(
 
   const checker = program.getTypeChecker();
 
-  const sourceFiles = filePaths
-    .map(filePath => program.getSourceFile(filePath));
+  const sourceFiles = filePaths.map(filePath =>
+    program.getSourceFile(filePath)
+  );
 
   // Loop through the root AST nodes of the file
   if (isDefined(sourceFiles[0])) {
     ts.forEachChild(sourceFiles[0], node => {
-      let name = "";
+      let name = '';
 
       // for (const sig of checker.getTypeAtLocation(node).getCallSignatures()) {
       //   console.log('** Returning: ', sig.getReturnType().symbol?.getEscapedName().toString());
@@ -1434,11 +1401,10 @@ function parseWithProgramProvider(
         console.log('NAME:::::', name);
       }
 
-      const container = [];//identifiers.includes(name) ? foundNodes : unfoundNodes;
+      const container = []; //identifiers.includes(name) ? foundNodes : unfoundNodes;
       container.push([name, node]);
     });
   }
-
 
   return sourceFiles
     .filter(
@@ -1456,10 +1422,11 @@ function parseWithProgramProvider(
       const components = checker.getExportsOfModule(moduleSymbol);
       const componentDocs: ComponentDoc[] = [];
 
-      // console.log();
+      // TODO set up a way to handle getting regular exports as well
+      // i.e. nodes within the files, not just exported symbols? maybe?
 
       // First document all components
-      components.forEach(exp => {
+      components.forEach((exp: ts.Symbol) => {
         const doc = parser.getComponentInfo(
           exp,
           sourceFile,
@@ -1478,7 +1445,9 @@ function parseWithProgramProvider(
         }
 
         // Then document any static sub-components
-        exp.exports.forEach(symbol => {
+        exp.exports.forEach((symbol: ts.Symbol) => {
+          // TODO investigate further
+          // checking memory addresses match
           if (symbol.flags & ts.SymbolFlags.Prototype) {
             return;
           }
@@ -1487,11 +1456,12 @@ function parseWithProgramProvider(
             const signature = parser.getCallSignature(symbol);
             const returnType = checker.typeToString(signature.getReturnType());
 
+            // react-specific bull crap
             if (returnType !== 'Element') {
               return;
             }
           }
-
+          // assuming its a component
           const doc = parser.getComponentInfo(
             symbol,
             sourceFile,
