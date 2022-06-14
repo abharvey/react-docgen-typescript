@@ -1,4 +1,6 @@
-import { ComponentDoc } from './parser';
+import * as ts from 'typescript';
+
+import { ComponentDoc, Parser, ParserOptions } from './parser';
 
 const hasSameDisplayName = (comp: ComponentDoc) => (
   compDoc: ComponentDoc
@@ -19,3 +21,41 @@ export function removeDuplicateDocs(componentDocs: ComponentDoc[]) {
     [] as ComponentDoc[]
   );
 }
+
+export const documentSubComponent = (
+  parser: Parser,
+  checker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+  parserOpts: ParserOptions,
+  exp: ts.Symbol
+) => (symbol: ts.Symbol): ComponentDoc | null => {
+  // TODO investigate further
+  // checking memory addresses match????
+  if (!(symbol.flags & ts.SymbolFlags.Prototype)) {
+    if (symbol.flags & ts.SymbolFlags.Method) {
+      const signature = parser.getCallSignature(symbol);
+      const returnType = checker.typeToString(signature.getReturnType());
+
+      if (returnType === 'Element') {
+        const doc = parser.getComponentInfo(
+          symbol,
+          sourceFile,
+          parserOpts.componentNameResolver,
+          parserOpts.customComponentTypes
+        );
+
+        if (doc) {
+          const prefix =
+            exp.escapedName === 'default' ? '' : `${exp.escapedName}.`;
+
+          return {
+            ...doc,
+            displayName: `${prefix}${symbol.escapedName}`
+          };
+        }
+      }
+    }
+  }
+
+  return null;
+};

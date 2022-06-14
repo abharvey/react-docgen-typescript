@@ -6,7 +6,7 @@ import { buildFilter } from './buildFilter';
 import { SymbolDisplayPart } from 'typescript';
 import { trimFileName } from './trimFileName';
 
-import { removeDuplicateDocs } from './utilities';
+import { documentSubComponent, removeDuplicateDocs } from './utilities';
 
 type InterfaceOrTypeAliasDeclaration =
   | ts.TypeAliasDeclaration
@@ -1413,7 +1413,7 @@ function parseWithProgramProvider(
       (sourceFile): sourceFile is ts.SourceFile =>
         typeof sourceFile !== 'undefined'
     )
-    .reduce<ComponentDoc[]>((docs, sourceFile) => {
+    .reduce<ComponentDoc[]>((docs, sourceFile: ts.SourceFile) => {
       // Could do the ts.forEachChild here instead and treat them as nodes instead of symbols at this stage
       const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
 
@@ -1448,37 +1448,15 @@ function parseWithProgramProvider(
 
         // Then document any static sub-components
         exp.exports.forEach((symbol: ts.Symbol) => {
-          // TODO investigate further
-          // checking memory addresses match
-          if (symbol.flags & ts.SymbolFlags.Prototype) {
-            return;
-          }
-
-          if (symbol.flags & ts.SymbolFlags.Method) {
-            const signature = parser.getCallSignature(symbol);
-            const returnType = checker.typeToString(signature.getReturnType());
-
-            // react-specific bull crap
-            if (returnType !== 'Element') {
-              return;
-            }
-          }
-          // assuming its a component
-          const doc = parser.getComponentInfo(
-            symbol,
+          const nextDoc: ComponentDoc | null = documentSubComponent(
+            parser,
+            checker,
             sourceFile,
-            parserOpts.componentNameResolver,
-            parserOpts.customComponentTypes
-          );
-
-          if (doc) {
-            const prefix =
-              exp.escapedName === 'default' ? '' : `${exp.escapedName}.`;
-
-            componentDocs.push({
-              ...doc,
-              displayName: `${prefix}${symbol.escapedName}`
-            });
+            parserOpts,
+            exp
+          )(symbol);
+          if (nextDoc) {
+            componentDocs.push(nextDoc);
           }
         });
       });
