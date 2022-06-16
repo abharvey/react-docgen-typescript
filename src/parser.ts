@@ -1,12 +1,11 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
-import { SymbolDisplayPart } from 'typescript';
 
 import { buildFilter } from './buildFilter';
 import { trimFileName } from './trimFileName';
-
-import { documentSubComponents, removeDuplicateDocs } from './utilities';
+import { documentSubComponents } from './documentComponents';
+import { removeDuplicateDocs } from './utilities';
 
 type InterfaceOrTypeAliasDeclaration =
   | ts.TypeAliasDeclaration
@@ -572,7 +571,7 @@ export class Parser {
 
   public getReturnDescription(
     symbol: ts.Symbol
-  ): SymbolDisplayPart[] | undefined {
+  ): ts.SymbolDisplayPart[] | undefined {
     const tags = symbol.getJsDocTags();
     const returnTag = tags.find(tag => tag.name === 'returns');
     if (!returnTag || !Array.isArray(returnTag.text)) {

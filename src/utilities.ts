@@ -1,66 +1,12 @@
 import * as ts from 'typescript';
 
-import { ComponentDoc, Parser, ParserOptions } from './parser';
+import { ComponentDoc } from './parser';
 
 export function removeDuplicateDocs(componentDocs: ComponentDoc[]) {
   return componentDocs.reduce<ComponentDoc[]>(
     (acc, comp) => (isComponentInList(acc, comp) ? acc : [...acc, comp]),
     []
   );
-}
-
-export function documentSubComponents(
-  mod: ts.Symbol,
-  parser: Parser,
-  checker: ts.TypeChecker,
-  sourceFile: ts.SourceFile,
-  parserOpts: ParserOptions
-) {
-  const result: ComponentDoc[] = [];
-  if (mod.exports) {
-    return iterateSymbolTable<ComponentDoc>(
-      mod.exports,
-      documentSubComponent(parser, checker, sourceFile, parserOpts, mod)
-    );
-  }
-  return result;
-}
-
-function documentSubComponent(
-  parser: Parser,
-  checker: ts.TypeChecker,
-  sourceFile: ts.SourceFile,
-  parserOpts: ParserOptions,
-  exp: ts.Symbol
-) {
-  return (symbol: ts.Symbol) => {
-    const isPrototype = symbol.flags & ts.SymbolFlags.Prototype;
-    const isReactFC =
-      symbol.flags & ts.SymbolFlags.Method &&
-      checker.typeToString(parser.getCallSignature(symbol).getReturnType()) !==
-        'Element';
-
-    if (!isPrototype && !isReactFC) {
-      const doc = parser.getComponentInfo(
-        symbol,
-        sourceFile,
-        parserOpts.componentNameResolver,
-        parserOpts.customComponentTypes
-      );
-
-      if (doc) {
-        const prefix =
-          exp.escapedName === 'default' ? '' : `${exp.escapedName}.`;
-
-        return {
-          ...doc,
-          displayName: `${prefix}${symbol.escapedName}`
-        };
-      }
-    }
-
-    return null;
-  };
 }
 
 function isComponentInList(
@@ -75,7 +21,7 @@ function hasSameDisplayName(comp: ComponentDoc) {
     compDoc!.displayName === comp!.displayName;
 }
 
-function iterateSymbolTable<T>(
+export function iterateSymbolTable<T>(
   symTable: ts.SymbolTable,
   iterator: (sym: ts.Symbol) => T | null
 ): T[] {
@@ -84,6 +30,6 @@ function iterateSymbolTable<T>(
   return result.filter(nonNull);
 }
 
-function nonNull<T>(value: T): value is NonNullable<T> {
+export function nonNull<T>(value: T): value is NonNullable<T> {
   return value != null;
 }
