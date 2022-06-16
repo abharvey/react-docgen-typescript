@@ -1,12 +1,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import * as ts from 'typescript';
+import { SymbolDisplayPart } from 'typescript';
 
 import { buildFilter } from './buildFilter';
-import { SymbolDisplayPart } from 'typescript';
 import { trimFileName } from './trimFileName';
 
-import { documentSubComponent, removeDuplicateDocs } from './utilities';
+import { documentSubComponents, removeDuplicateDocs } from './utilities';
 
 type InterfaceOrTypeAliasDeclaration =
   | ts.TypeAliasDeclaration
@@ -1422,7 +1422,7 @@ function parseWithProgramProvider(
       }
 
       const components = checker.getExportsOfModule(moduleSymbol);
-      const componentDocs: ComponentDoc[] = [];
+      let componentDocs: ComponentDoc[] = [];
 
       // TODO set up a way to handle getting regular exports as well
       // i.e. nodes within the files, not just exported symbols? maybe?
@@ -1436,29 +1436,14 @@ function parseWithProgramProvider(
           parserOpts.customComponentTypes
         );
 
-        // console.log(parser.getCallSignature(exp).getParameters(), '******');
-
         if (doc) {
           componentDocs.push(doc);
         }
 
-        if (!exp.exports) {
-          return;
-        }
-
         // Then document any static sub-components
-        exp.exports.forEach((symbol: ts.Symbol) => {
-          const nextDoc: ComponentDoc | null = documentSubComponent(
-            parser,
-            checker,
-            sourceFile,
-            parserOpts,
-            exp
-          )(symbol);
-          if (nextDoc) {
-            componentDocs.push(nextDoc);
-          }
-        });
+        componentDocs = componentDocs.concat(
+          documentSubComponents(exp, parser, checker, sourceFile, parserOpts)
+        );
       });
 
       const componentDocsNoDuplicates = removeDuplicateDocs(componentDocs);

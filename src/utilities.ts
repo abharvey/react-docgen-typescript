@@ -2,58 +2,88 @@ import * as ts from 'typescript';
 
 import { ComponentDoc, Parser, ParserOptions } from './parser';
 
-const hasSameDisplayName = (comp: ComponentDoc) => (
-    compDoc: ComponentDoc
-): boolean => {
-    return compDoc!.displayName === comp!.displayName;
-};
-
-function isComponentInList(
-    componentDocs: ComponentDoc[],
-    comp: ComponentDoc
-): boolean {
-    return !!componentDocs.find(hasSameDisplayName(comp));
-}
-
 export function removeDuplicateDocs(componentDocs: ComponentDoc[]) {
-    return componentDocs.reduce(
-        (acc, comp) => (isComponentInList(acc, comp) ? acc : [...acc, comp]),
-        [] as ComponentDoc[]
-    );
+  return componentDocs.reduce<ComponentDoc[]>(
+    (acc, comp) => (isComponentInList(acc, comp) ? acc : [...acc, comp]),
+    []
+  );
 }
 
-export const documentSubComponent = (
-    parser: Parser,
-    checker: ts.TypeChecker,
-    sourceFile: ts.SourceFile,
-    parserOpts: ParserOptions,
-    exp: ts.Symbol
-) => (symbol: ts.Symbol): ComponentDoc | null => {
-    // TODO investigate further
-    // checking memory addresses match????
-    if (symbol.flags & ts.SymbolFlags.Method) {
-        const signature = parser.getCallSignature(symbol);
-        const returnType = checker.typeToString(signature.getReturnType());
+export function documentSubComponents(
+  mod: ts.Symbol,
+  parser: Parser,
+  checker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+  parserOpts: ParserOptions
+) {
+  const result: ComponentDoc[] = [];
+  if (mod.exports) {
+    return iterateSymbolTable<ComponentDoc>(
+      mod.exports,
+      documentSubComponent(parser, checker, sourceFile, parserOpts, mod)
+    );
+  }
+  return result;
+}
 
-        if (returnType === 'Element') {
-            const doc = parser.getComponentInfo(
-                symbol,
-                sourceFile,
-                parserOpts.componentNameResolver,
-                parserOpts.customComponentTypes
-            );
+function documentSubComponent(
+  parser: Parser,
+  checker: ts.TypeChecker,
+  sourceFile: ts.SourceFile,
+  parserOpts: ParserOptions,
+  exp: ts.Symbol
+) {
+  return (symbol: ts.Symbol) => {
+    const isPrototype = symbol.flags & ts.SymbolFlags.Prototype;
+    const isReactFC =
+      symbol.flags & ts.SymbolFlags.Method &&
+      checker.typeToString(parser.getCallSignature(symbol).getReturnType()) !==
+        'Element';
 
-            if (doc) {
-                const prefix =
-                    exp.escapedName === 'default' ? '' : `${exp.escapedName}.`;
+    if (!isPrototype && !isReactFC) {
+      const doc = parser.getComponentInfo(
+        symbol,
+        sourceFile,
+        parserOpts.componentNameResolver,
+        parserOpts.customComponentTypes
+      );
 
-                return {
-                    ...doc,
-                    displayName: `${prefix}${symbol.escapedName}`
-                };
-            }
-        }
+      if (doc) {
+        const prefix =
+          exp.escapedName === 'default' ? '' : `${exp.escapedName}.`;
+
+        return {
+          ...doc,
+          displayName: `${prefix}${symbol.escapedName}`
+        };
+      }
     }
 
     return null;
-};
+  };
+}
+
+function isComponentInList(
+  componentDocs: ComponentDoc[],
+  comp: ComponentDoc
+): boolean {
+  return !!componentDocs.find(hasSameDisplayName(comp));
+}
+
+function hasSameDisplayName(comp: ComponentDoc) {
+  return (compDoc: ComponentDoc): boolean =>
+    compDoc!.displayName === comp!.displayName;
+}
+
+function iterateSymbolTable<T>(
+  symTable: ts.SymbolTable,
+  iterator: (sym: ts.Symbol) => T | null
+): T[] {
+  const result: (T | null)[] = [];
+  symTable.forEach(sym => result.push(iterator(sym)));
+  return result.filter(nonNull);
+}
+
+function nonNull<T>(value: T): value is NonNullable<T> {
+  return value != null;
+}
