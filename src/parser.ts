@@ -1422,13 +1422,7 @@ function parseWithProgramProvider(
       }
 
       const components = checker.getExportsOfModule(moduleSymbol);
-      let componentDocs: ComponentDoc[] = [];
-
-      // TODO set up a way to handle getting regular exports as well
-      // i.e. nodes within the files, not just exported symbols? maybe?
-
-      // First document all components
-      components.forEach((exp: ts.Symbol) => {
+      const componentDocs = components.flatMap((exp: ts.Symbol) => {
         const doc = parser.getComponentInfo(
           exp,
           sourceFile,
@@ -1436,15 +1430,19 @@ function parseWithProgramProvider(
           parserOpts.customComponentTypes
         );
 
-        if (doc) {
-          componentDocs.push(doc);
-        }
-
-        // Then document any static sub-components
-        componentDocs = componentDocs.concat(
-          documentSubComponents(exp, parser, checker, sourceFile, parserOpts)
+        const subComponentsDocs = documentSubComponents(
+          exp,
+          parser,
+          checker,
+          sourceFile,
+          parserOpts
         );
+
+        return doc ? [doc].concat(subComponentsDocs) : subComponentsDocs;
       });
+
+      // TODO set up a way to handle getting regular exports as well
+      // i.e. nodes within the files, not just exported symbols? maybe?
 
       const componentDocsNoDuplicates = removeDuplicateDocs(componentDocs);
 
